@@ -56,11 +56,23 @@ def handle_answer(data):
     player_answer = data.get("answer")
     correct_answer = game["current_question"]["correct"]
 
+    # הגדר את score_this_round כאן, לפני בלוק ה-if/else
+    score_this_round = 0 # אתחל ל-0 כברירת מחדל
+
     if player_answer == correct_answer:
-        game["score"] += 10
-        emit("game_result", {"score": 10}, to=sid)
+        score_this_round = 10 # הקצה ערך למשתנה שהוגדר מחוץ לבלוק
+        game["score"] += score_this_round # השתמש ב-score_this_round כאן
+        result = "✔️ Correct!"
     else:
-        emit("game_result", {"score": 0}, to=sid)
+        # אם התשובה שגויה, score_this_round יישאר 0 (מהאתחול)
+        result = "❌ Incorrect"
+
+    socketio.emit("answer_result", {
+        "correct": correct_answer,
+        "result": result,
+        "score_this_round": score_this_round,  # עכשיו זה מתייחס לניקוד הנכון לסיבוב
+        "total_score": game["score"]
+    }, to=sid)
 
     game["questions_asked"] += 1
     if game["questions_asked"] >= game["max_questions"]:
@@ -68,7 +80,7 @@ def handle_answer(data):
         del active_games[sid]
     else:
         send_next_question(sid)
-
+        
 if __name__ == '__main__':
     print("🎮 Trivia server running on http://localhost:5000")
     socketio.run(app, host='0.0.0.0', port=5000)
