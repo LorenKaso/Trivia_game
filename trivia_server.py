@@ -1,10 +1,13 @@
-import random
-import sqlite3
-from flask import Flask
+from flask import Flask, request
 from flask_socketio import SocketIO, emit
+import sqlite3
+import random
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+socketio = SocketIO(app, cors_allowed_origins="*")
+
+# ✅ כאן נגדיר את מילון המשחקים הפעילים
+active_games = {}
 
 def get_random_question():
     conn = sqlite3.connect("trivia.db")
@@ -16,35 +19,55 @@ def get_random_question():
         return {
             "question": row[0],
             "options": [row[1], row[2], row[3], row[4]],
-            "correct": row[5]  # לשימוש פנימי לציון
+            "correct": row[5]
         }
     return None
 
-# זיכרון של ניקוד לדוגמה
-scores = {}
-
 @socketio.on('connect')
 def handle_connect():
-    print("📲 Client connected")
+    sid = request.sid
+    print(f"📲 Client connected: {sid}")
+    active_games[sid] = {
+        "score": 0,
+        "questions_asked": 0,
+        "max_questions": 10
+    }
+    
+    send_next_question(sid)
+
+def send_next_question(sid):
+    game = active_games[sid]
     question = get_random_question()
-    print("🎲 שאלה שנבחרה:", question)
     if question:
+        game["current_question"] = question
         emit('trivia_question', {
             "question": question["question"],
-            "options": question["options"]
-        })
-        # שמירה של תשובה נכונה לשימוש בהמשך
-        scores['correct_answer'] = question["correct"]
+            "options": question["options"],
+            "correct": question["correct"],
+            "difficulty": "?"  # או לפי לוגיקה עתידית
+        }, to=sid)
     else:
-        emit('trivia_question', {"question": "לא נמצאה שאלה 😢", "options": []})
+        emit('game_over', {"final_score": game["score"]}, to=sid)
 
 @socketio.on('submit_answer')
 def handle_answer(data):
-    print(f"📥 Received answer: {data['answer']}")
-    correct = scores.get('correct_answer')
-    score = 10 if data["answer"] == correct else 0
-    emit('game_result', {"score": score})
-    print(f"🏆 Score: {score}")
+    sid = request.sid
+    game = active_games[sid]
+    player_answer = data.get("answer")
+    correct_answer = game["current_question"]["correct"]
+
+    if player_answer == correct_answer:
+        game["score"] += 10
+        emit("game_result", {"score": 10}, to=sid)
+    else:
+        emit("game_result", {"score": 0}, to=sid)
+
+    game["questions_asked"] += 1
+    if game["questions_asked"] >= game["max_questions"]:
+        emit("game_over", {"final_score": game["score"]}, to=sid)
+        del active_games[sid]
+    else:
+        send_next_question(sid)
 
 if __name__ == '__main__':
     print("🎮 Trivia server running on http://localhost:5000")
