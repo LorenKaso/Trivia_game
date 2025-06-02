@@ -2,6 +2,7 @@ from flask import Flask, request
 from flask_socketio import SocketIO, emit
 import sqlite3
 import random
+import threading
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -24,6 +25,33 @@ def get_random_question():
         }
     return None
 
+def handle_timeout(sid):
+    game = active_games.get(sid)
+    if game and not game.get("answered"):
+        print(f"⏰ Timeout for client {sid}, moving to next question...")
+        handle_answer({"answer": None}, sid=sid, timed_out=True)
+
+def send_next_question(sid):
+    game = active_games[sid]
+    question_data = get_random_question()
+    if question_data:
+        game["current_question"] = question_data
+        game["answered"] = False  # שחקן טרם ענה
+
+        socketio.emit('trivia_question', {
+            "question": question_data["question"],
+            "options": question_data["options"],
+            "correct": question_data["correct"],
+            "difficulty": question_data["difficulty"]
+        }, to=sid)
+
+        # הפעל טיימר של 20 שניות
+        timer = threading.Timer(20.0, handle_timeout, args=(sid,))
+        game["timer"] = timer
+        timer.start()
+    else:
+        socketio.emit('game_over', {"final_score": game["score"]}, to=sid)
+
 @socketio.on('connect')
 def handle_connect():
     sid = request.sid
@@ -36,47 +64,45 @@ def handle_connect():
     
     send_next_question(sid)
 
-def send_next_question(sid):
-    game = active_games[sid]
-    question_data = get_random_question()
-    if question_data:
-        game["current_question"] = question_data
-        emit('trivia_question', {
-            "question": question_data["question"],
-            "options": question_data["options"],
-            "correct": question_data["correct"],
-            "difficulty": question_data["difficulty"]        }, to=sid)
-    else:
-        emit('game_over', {"final_score": game["score"]}, to=sid)
-
 @socketio.on('submit_answer')
-def handle_answer(data):
-    sid = request.sid
-    game = active_games[sid]
+def handle_answer(data, sid=None, timed_out=False):
+    if sid is None:
+        sid = request.sid
+
+    game = active_games.get(sid)
+    if not game:
+        return
+
+    # בטל את הטיימר
+    timer = game.get("timer")
+    if timer:
+        timer.cancel()
+
+    game["answered"] = True  # שחקן ענה או עבר הזמן
+
     player_answer = data.get("answer")
     correct_answer = game["current_question"]["correct"]
 
-    # הגדר את score_this_round כאן, לפני בלוק ה-if/else
-    score_this_round = 0 # אתחל ל-0 כברירת מחדל
-
+    score_this_round = 0
     if player_answer == correct_answer:
-        score_this_round = 10 # הקצה ערך למשתנה שהוגדר מחוץ לבלוק
-        game["score"] += score_this_round # השתמש ב-score_this_round כאן
+        score_this_round = 10
+        game["score"] += score_this_round
         result = "✔️ Correct!"
+    elif timed_out:
+        result = "⏰ Timeout! No answer submitted."
     else:
-        # אם התשובה שגויה, score_this_round יישאר 0 (מהאתחול)
         result = "❌ Incorrect"
 
     socketio.emit("answer_result", {
         "correct": correct_answer,
         "result": result,
-        "score_this_round": score_this_round,  # עכשיו זה מתייחס לניקוד הנכון לסיבוב
+        "score_this_round": score_this_round,
         "total_score": game["score"]
     }, to=sid)
 
     game["questions_asked"] += 1
     if game["questions_asked"] >= game["max_questions"]:
-        emit("game_over", {"final_score": game["score"]}, to=sid)
+        socketio.emit("game_over", {"final_score": game["score"]}, to=sid)
         del active_games[sid]
     else:
         send_next_question(sid)

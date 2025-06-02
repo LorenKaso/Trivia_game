@@ -2,6 +2,8 @@ import socketio
 import random
 import time
 import os
+import threading
+import datetime
 
 def load_total_score():
     if os.path.exists("score.txt"):
@@ -15,6 +17,14 @@ def save_total_score(score):
 
 score = load_total_score()
 
+countdown_stop_event = threading.Event()
+
+def countdown(seconds):
+    for i in range(seconds, 0, -1):
+        if countdown_stop_event.is_set():
+            break
+        print(f"⏳ Time left: {i} seconds", end="\r")
+        time.sleep(1)
 
 sio = socketio.Client()
 question_count = 0
@@ -31,12 +41,12 @@ def disconnect():
 
 @sio.on('trivia_question')
 def on_question(data):
-    global question_count
+    global question_count, countdown_stop_event
     question_count += 1
 
     question = data.get("question", "")
     options = data.get("options", [])
-    correct_letter = data.get("correct", "") # זו האות הנכונה (א, ב, ג, ד)
+    correct_letter = data.get("correct", "")  # זו האות הנכונה (א, ב, ג, ד)
     difficulty = data.get("difficulty", "?")
 
     print(f"\n🔹 Question {question_count} | Difficulty: {difficulty}")
@@ -49,22 +59,21 @@ def on_question(data):
     correct_index = hebrew_letters.index(correct_letter) if correct_letter in hebrew_letters else -1
     correct_text = options[correct_index] if 0 <= correct_index < len(options) else None
 
-    selected_text_answer = "" # נשמור כאן את הטקסט שהלקוח בחר (לצורך הדפסה)
-    selected_letter_answer = "" # נשמור כאן את האות שהלקוח ישלח לשרת
+    selected_text_answer = ""
+    selected_letter_answer = ""
 
     # בחר תשובה – 60% סיכוי שתהיה נכונה
     if correct_text and random.random() < 0.6:
         selected_text_answer = correct_text
-        selected_letter_answer = correct_letter # שלח את האות הנכונה
+        selected_letter_answer = correct_letter
     else:
         wrong_options = [opt for opt in options if opt != correct_text]
         if wrong_options:
             selected_text_answer = random.choice(wrong_options)
-            # מצא את האות התואמת לטקסט השגוי שנבחר
             selected_letter_answer = hebrew_letters[options.index(selected_text_answer)]
         else:
             selected_text_answer = ""
-            selected_letter_answer = "" # או תוכל לשלוח אות ריקה אם אין אפשרויות
+            selected_letter_answer = ""
 
     result_text = "✔️ Correct!" if selected_text_answer == correct_text else "❌ Incorrect"
 
@@ -73,19 +82,26 @@ def on_question(data):
         print(f"✅ Correct answer: {correct_text}")
         print(f"🎯 Result: {result_text}")
 
-    # שמירת פרטי השאלה להדפסה בסוף
+    # שמירת פרטי השאלה
     received_questions.append({
         "number": question_count,
         "difficulty": difficulty,
         "question": question,
         "options": options,
-        "selected": selected_text_answer, # כאן עדיין נשמור את הטקסט המלא לצורך סיכום
-        "correct": correct_text, # כאן עדיין נשמור את הטקסט המלא לצורך סיכום
+        "selected": selected_text_answer,
+        "correct": correct_text,
         "result": result_text
     })
 
-    time.sleep(1)
-    # שלח לשרת את האות של התשובה שבחרת!
+    # 🕒 ספירה לאחור עם עצירה אם השחקן עונה
+    countdown_stop_event.clear()
+    threading.Thread(target=countdown, args=(20,)).start()
+
+    # ⏱ סימולציה של זמן תגובה של השחקן (רנדומלי)
+    time.sleep(random.randint(1, 4))
+
+    # עצור את הספירה ושלח תשובה
+    countdown_stop_event.set()
     sio.emit('submit_answer', {"answer": selected_letter_answer})
 
 @sio.on('answer_result')
