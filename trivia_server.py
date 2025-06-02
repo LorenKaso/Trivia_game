@@ -12,14 +12,15 @@ active_games = {}
 def get_random_question():
     conn = sqlite3.connect("trivia.db")
     cursor = conn.cursor()
-    cursor.execute("SELECT question, option_a, option_b, option_c, option_d, correct_answer FROM trivia ORDER BY RANDOM() LIMIT 1")
+    cursor.execute("SELECT question, option_a, option_b, option_c, option_d, correct_answer, difficulty FROM trivia ORDER BY RANDOM() LIMIT 1")    
     row = cursor.fetchone()
     conn.close()
     if row:
         return {
             "question": row[0],
             "options": [row[1], row[2], row[3], row[4]],
-            "correct": row[5]
+            "correct": row[5],
+            "difficulty": row[6] 
         }
     return None
 
@@ -37,15 +38,14 @@ def handle_connect():
 
 def send_next_question(sid):
     game = active_games[sid]
-    question = get_random_question()
-    if question:
-        game["current_question"] = question
+    question_data = get_random_question()
+    if question_data:
+        game["current_question"] = question_data
         emit('trivia_question', {
-            "question": question["question"],
-            "options": question["options"],
-            "correct": question["correct"],
-            "difficulty": "?"  # או לפי לוגיקה עתידית
-        }, to=sid)
+            "question": question_data["question"],
+            "options": question_data["options"],
+            "correct": question_data["correct"],
+            "difficulty": question_data["difficulty"]        }, to=sid)
     else:
         emit('game_over', {"final_score": game["score"]}, to=sid)
 
@@ -80,7 +80,7 @@ def handle_answer(data):
         del active_games[sid]
     else:
         send_next_question(sid)
-        
+
 if __name__ == '__main__':
     print("🎮 Trivia server running on http://localhost:5000")
     socketio.run(app, host='0.0.0.0', port=5000)
