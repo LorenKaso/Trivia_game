@@ -3,6 +3,7 @@ from flask_socketio import SocketIO, emit
 import sqlite3
 import random
 import threading
+from llm_helpers import call_a_friend_suggestion
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -63,6 +64,31 @@ def handle_connect():
     }
     
     send_next_question(sid)
+
+@socketio.on('use_lifeline')
+def handle_lifeline(data):
+    sid = request.sid
+    lifeline = data.get("lifeline")
+
+    if lifeline == "call_a_friend":
+        game = active_games.get(sid)
+        if not game:
+            return
+        
+        question_data = game.get("current_question")
+        if not question_data:
+            return
+
+        try:
+            suggestion = call_a_friend_suggestion(question_data)
+        except Exception as e:
+            print(f"❌ Error with LLM lifeline: {e}")
+            suggestion = "Sorry, your friend didn’t answer. Maybe they're on vacation 🌴."
+
+        socketio.emit('lifeline_response', {
+            "lifeline": "call_a_friend",
+            "message": suggestion
+        }, to=sid)
 
 @socketio.on('submit_answer')
 def handle_answer(data, sid=None, timed_out=False):

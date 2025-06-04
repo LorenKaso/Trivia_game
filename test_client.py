@@ -104,6 +104,11 @@ def on_question(data):
     countdown_stop_event.set()
     sio.emit('submit_answer', {"answer": selected_letter_answer})
 
+@sio.on('lifeline_response')
+def on_lifeline_response(data):
+    if data["lifeline"] == "call_a_friend":
+        print(f"\n📞 Call-a-friend says: {data['message']}")
+
 @sio.on('answer_result')
 def on_answer_result(data):
     global score
