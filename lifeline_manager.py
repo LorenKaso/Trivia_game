@@ -37,6 +37,16 @@ class LifelineManager:
         removed = random.sample(wrong_options, 2)
         reduced = [opt for opt in options if opt not in removed]
         return reduced
+    
+    def apply_call_a_friend(self, question_data):
+        from llm_helpers import call_a_friend_suggestion
+        return call_a_friend_suggestion(question_data)
+
+    def apply_double_score(self, sid):
+        if self.can_use(sid, "double_score"):
+            self.use(sid, "double_score")
+            return True
+        return False
 
     def reset(self):
         self.lifelines = {}
