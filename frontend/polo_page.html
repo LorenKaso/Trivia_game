@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>פולו-טריוויה</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      /* השינוי היחיד כאן: polo_table.png במקום mono_table.png */
+      background: url('polo_table.png') no-repeat center center fixed;
+      background-size: 87%;
+      background-color: #dfafaf;
+      background-repeat: no-repeat;
+      background-position: center;
+      color: white;
+      text-align: center;
+      padding: 4rem 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .card {
+      background: rgba(0, 153, 204, 0.6);
+      border: 3px solid white;
+      border-radius: 20px;
+      padding: 1.5rem;
+      width: 260px;
+      height: 150px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+      position: absolute;
+      top: 30%;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+      transform: none;
+    }
+
+    .card:hover {
+      transform: none;
+    }
+
+    .card h2 {
+      font-size: 1.3rem;
+      color: white;
+      text-shadow: 1px 1px 3px black;
+    }
+
+    .question-mark {
+      font-size: 3rem;
+      color: white;
+      font-weight: bold;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 500px;
+      width: 100%;
+      margin-top: 200px;
+    }
+
+    .options button {
+      padding: 1rem;
+      font-size: 1.2rem;
+      background-color: #d40000;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .options button:hover {
+      background-color: #ff1a1a;
+      transform: scale(1.05);
+    }
+
+    .feedback {
+      margin-top: 1.5rem;
+      font-size: 1.4rem;
+      color: #ffffcc;
+      text-shadow: 0 0 5px #000;
+    }
+
+    @media screen and (max-width: 600px) {
+      .card {
+        width: 90vw;
+        height: auto;
+        padding: 1rem;
+      }
+
+      .card h2 {
+        font-size: 1rem;
+      }
+
+      .options button {
+        font-size: 1rem;
+        padding: 0.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div id="card-content" class="question-mark">?</div>
+  </div>
+
+  <div class="options" id="options"></div>
+  <div class="feedback" id="feedback"></div>
+
+  <script>
+    const socket = io("http://localhost:5000");
+
+    socket.on("connect", () => {
+      console.log("🎯 התחברת לשרת הטריוויה");
+    });
+
+    socket.on("trivia_question", (data) => {
+      const card = document.getElementById("card-content");
+      card.classList.remove("question-mark");
+      card.innerHTML = `<h2>${data.question}</h2>`;
+
+      const optionsDiv = document.getElementById("options");
+      optionsDiv.innerHTML = "";
+
+      data.options.forEach(option => {
+        const btn = document.createElement("button");
+        btn.innerText = option;
+        btn.onclick = () => {
+          socket.emit("submit_answer", { answer: option });
+        };
+        optionsDiv.appendChild(btn);
+      });
+
+      document.getElementById("feedback").innerText = "";
+    });
+
+    socket.on("answer_result", (data) => {
+      document.getElementById("feedback").innerText =
+        data.result + " ✅ התשובה הנכונה: " + data.correct;
+    });
+
+    socket.on("game_over", (data) => {
+      document.getElementById("card-content").innerHTML = `<h2>🏋️ המשחק הסתיים!</h2>`;
+      document.getElementById("options").innerHTML = "";
+      document.getElementById("feedback").innerText = "🥇 ניקוד סופי: " + data.final_score;
+    });
+  </script>
+</body>
+</html>

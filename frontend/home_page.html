@@ -79,7 +79,7 @@
       justify-content: center;
       flex-direction: column;
       z-index: 10;
-      animation: fadeOut 1s ease-in-out 3s forwards;
+      animation: fadeOut 1s ease-in-out 2s forwards;
     }
 
     .intro-screen h1 {
@@ -181,8 +181,12 @@
         <button class="fade-transition"
         onmouseenter="this.dataset.original=this.innerText;
         this.innerText='משחק קבוצתי עם חברים עד 5 משתתפים';"
-        onmouseleave="this.innerText=this.dataset.original" onclick="setTimeout(() => location.href='folo.html', 700);">👥 פולו-טריויה</button>
-        <button class="fade-transition" onmouseenter="this.dataset.original=this.innerText; this.innerText='שחקנים מכל העולם';" onmouseleave="this.innerText=this.dataset.original" onclick="setTimeout(() => location.href='global.html', 700);">🌍 עולמי-טריויה</button>
+        onmouseleave="this.innerText=this.dataset.original"
+        onclick="setTimeout(() => location.href='polo_page.html', 700);">👥 פולו-טריויה</button>
+        <button class="fade-transition"
+        onmouseenter="this.dataset.original=this.innerText; this.innerText='שחקנים מכל העולם';"
+        onmouseleave="this.innerText=this.dataset.original"
+        onclick="setTimeout(() => location.href='polo_page.html', 700);">🌍 עולמי-טריויה</button>
     </div>
   </div>
 
