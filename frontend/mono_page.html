@@ -33,6 +33,28 @@
       align-items: center;
     }
 
+    /* כפתור חזרה לדף הבית */
+    #back-to-home-btn {
+      position: absolute;
+      top: 17px;
+      right: 40px; /* מיקום בפינה השמאלית העליונה */
+      background-color: #a06e02; /* צבע אדום כהה */
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: background-color 0.3s, transform 0.2s;
+      z-index: 20; /* ודא שהוא מעל שאר האלמנטים */
+    }
+
+    #back-to-home-btn:hover {
+      background-color: #cc0000; /* צבע אדום בהיר יותר בריחוף */
+      transform: scale(1.05);
+    }
+
     .card {
       background: rgba(0, 153, 204, 0.6);
       border: 3px solid white;
@@ -99,25 +121,123 @@
       text-shadow: 0 0 5px #000;
     }
 
+    /* Pop-up Styles */
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100; /* ודא שהוא מעל הכל */
+      visibility: hidden; /* נסתר כברירת מחדל */
+      opacity: 0;
+      transition: visibility 0s, opacity 0.3s ease-in-out;
+    }
+
+    .popup-overlay.show {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .popup-content .popup-buttons button {
+      /* סגנון בסיסי לכפתורים */
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.1s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      color: white; /* טקסט לבן על כפתורי מונופול צבעוניים */
+    }
+
+    .popup-overlay.show .popup-content {
+        transform: scale(1);
+    }
+
+    .popup-content h3 {
+      margin-bottom: 25px;
+      font-size: 1.6rem;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .popup-content .popup-buttons button {
+      background-color: #fff; /* כפתורים לבנים */
+      color: #333;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin: 0 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    #confirm-exit-btn {
+      background-color: #e44d26; /* אדום-כתום (כמו אדום של מונופול) */
+    }
+    #confirm-exit-btn:hover {
+      background-color: #ff6a00; /* אדום-כתום בהיר יותר בריחוף */
+      transform: translateY(-2px);
+    }
+
+    #cancel-exit-btn {
+      background-color: #3366cc; /* כחול (כמו כחול של מונופול) */
+    }
+    #cancel-exit-btn:hover {
+      background-color: #004080; /* כחול כהה יותר בריחוף */
+      transform: translateY(-2px);
+    }
+
+    .popup-content .popup-buttons button:hover {
+      background-color: #eee;
+      transform: translateY(-2px);
+    }
+
+    /* Media Queries for responsiveness */
     @media screen and (max-width: 600px) {
+      #back-to-home-btn {
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+      }
       .card {
         width: 90vw;
         height: auto;
         padding: 1rem;
       }
-
       .card h2 {
         font-size: 1rem;
       }
-
       .options button {
         font-size: 1rem;
         padding: 0.8rem;
+      }
+      .popup-content {
+        width: 90vw;
+        padding: 20px;
+      }
+      .popup-content h3 {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+      }
+      .popup-content .popup-buttons button {
+        padding: 8px 15px;
+        font-size: 1rem;
+        margin: 0 5px;
       }
     }
   </style>
 </head>
 <body>
+  <button id="back-to-home-btn">חזור לדף הבית</button>
+
   <div class="card">
     <div id="card-content" class="question-mark">?</div>
   </div>
@@ -125,19 +245,38 @@
   <div class="options" id="options"></div>
   <div class="feedback" id="feedback"></div>
 
+  <div id="popup-overlay" class="popup-overlay">
+    <div class="popup-content">
+      <h3>האם אתה בטוח שברצונך לצאת?</h3>
+      <div class="popup-buttons">
+        <button id="confirm-exit-btn">צא למסך הבית</button>
+        <button id="cancel-exit-btn">הישאר במשחק</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const socket = io("http://localhost:5000");
+
+    let timerInterval; // משתנה גלובלי לשמירת מזהה הטיימר של ה-setInterval
+
+    // --- References to HTML elements ---
+    const cardContent = document.getElementById("card-content");
+    const optionsDiv = document.getElementById("options");
+    const feedbackDiv = document.getElementById("feedback");
+    const backToHomeBtn = document.getElementById("back-to-home-btn");
+    const popupOverlay = document.getElementById("popup-overlay");
+    const confirmExitBtn = document.getElementById("confirm-exit-btn");
+    const cancelExitBtn = document.getElementById("cancel-exit-btn");
 
     socket.on("connect", () => {
       console.log("🎯 התחברת לשרת הטריוויה");
     });
 
     socket.on("trivia_question", (data) => {
-      const card = document.getElementById("card-content");
-      card.classList.remove("question-mark");
-      card.innerHTML = `<h2>${data.question}</h2>`;
+      cardContent.classList.remove("question-mark");
+      cardContent.innerHTML = `<h2>${data.question}</h2>`;
 
-      const optionsDiv = document.getElementById("options");
       optionsDiv.innerHTML = "";
 
       data.options.forEach(option => {
@@ -145,23 +284,56 @@
         btn.innerText = option;
         btn.onclick = () => {
           socket.emit("submit_answer", { answer: option });
+          // ניתן להשבית את כל הכפתורים לאחר לחיצה כדי למנוע לחיצות כפולות
+          Array.from(optionsDiv.children).forEach(button => button.disabled = true);
         };
         optionsDiv.appendChild(btn);
       });
 
-      document.getElementById("feedback").innerText = "";
+      feedbackDiv.innerText = "";
     });
 
     socket.on("answer_result", (data) => {
-      document.getElementById("feedback").innerText =
+      feedbackDiv.innerText =
         data.result + " ✅ התשובה הנכונה: " + data.correct;
+      // אם היה גם ניקוד, נעדכן אותו כאן, כפי שתיקנו קודם.
+      // לדוגמה: document.getElementById("score-display").innerText = `ניקוד: ${data.total_score}`;
     });
 
     socket.on("game_over", (data) => {
-      document.getElementById("card-content").innerHTML = `<h2>🏋️ המשחק הסתיים!</h2>`;
-      document.getElementById("options").innerHTML = "";
-      document.getElementById("feedback").innerText = "🥇 ניקוד סופי: " + data.final_score;
+      cardContent.innerHTML = `<h2>🏋️ המשחק הסתיים!</h2>`;
+      optionsDiv.innerHTML = "";
+      feedbackDiv.innerText = "🥇 ניקוד סופי: " + data.final_score;
     });
+
+    // --- Pop-up Logic ---
+
+    // כשאני לוחץ על כפתור "חזור לדף הבית"
+    backToHomeBtn.addEventListener("click", () => {
+      popupOverlay.classList.add("show"); // הצג את הפופ-אפ
+      // אופציונלי: עצור את הטיימר או את פעילות המשחק ברקע
+      // if (timerInterval) clearInterval(timerInterval);
+    });
+
+    // כשאני לוחץ על "צא למסך הבית" בתוך הפופ-אפ
+    confirmExitBtn.addEventListener("click", () => {
+      window.location.href = "home_page.html"; // ניתוב לדף הבית
+    });
+
+    // כשאני לוחץ על "הישאר במשחק" בתוך הפופ-אפ
+    cancelExitBtn.addEventListener("click", () => {
+      popupOverlay.classList.remove("show"); // הסתר את הפופ-אפ
+      // אופציונלי: המשך את הטיימר או את פעילות המשחק אם עצרת
+      // (זה ידרוש לוגיקה נוספת בשרת ובפרונט)
+    });
+
+    // אופציונלי: סגור את הפופ-אפ גם בלחיצה מחוץ לתוכן שלו
+    popupOverlay.addEventListener("click", (event) => {
+      if (event.target === popupOverlay) {
+        popupOverlay.classList.remove("show");
+      }
+    });
+
   </script>
 </body>
 </html>
