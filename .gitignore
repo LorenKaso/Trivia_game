@@ -1,0 +1,18 @@
+# Ignore virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VS Code
+.vscode/
+.idea/
+# SQLite files (optional)
+*.db
+
+# Node.js
+node_modules/
+
+#env
+.env
