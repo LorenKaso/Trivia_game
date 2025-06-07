@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>VegasTrivia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle, #ccf2ff, #003366);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('https://i.imgur.com/Yd3M5De.png') no-repeat center center;
+      background-size: cover;
+      opacity: 0.08;
+      z-index: 0;
+    }
+
+    .curtains {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 15vw;
+      background: linear-gradient(to right, #800000, #cc0000);
+      z-index: 1;
+      animation-duration: 2s;
+      animation-fill-mode: forwards;
+    }
+
+    .curtains.left {
+      left: 0;
+      border-right: 2px solid #fff2f2;
+      animation-name: openLeft;
+    }
+
+    .curtains.right {
+      right: 0;
+      border-left: 2px solid #fff2f2;
+      animation-name: openRight;
+    }
+
+    @keyframes openLeft {
+      0% { left: 0; }
+      100% { left: -15vw; }
+    }
+
+    @keyframes openRight {
+      0% { right: 0; }
+      100% { right: -15vw; }
+    }
+
+    .intro-screen {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, #ff9999, #990000);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      z-index: 10;
+      animation: fadeOut 1s ease-in-out 3s forwards;
+    }
+
+    .intro-screen h1 {
+      font-size: 4rem;
+      color: #fff;
+      text-shadow: 0 0 10px #000;
+      padding: 0.5rem 1rem;
+    }
+
+    .intro-screen p {
+      font-size: 1.5rem;
+      margin-top: 1rem;
+      color: #fff;
+      padding: 0.4rem 1rem;
+    }
+
+    @keyframes fadeOut {
+      to {
+        opacity: 0;
+        visibility: hidden;
+      }
+    }
+
+    .home-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn 1s ease-in forwards;
+      z-index: 2;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .home-screen.show {
+      display: flex;
+    }
+
+    .home-title {
+      font-size: 3rem;
+      margin-bottom: 2rem;
+      color: #ffe6e6;
+      text-shadow: 2px 2px 4px #000000;
+      padding: 0.5rem 1.5rem;
+    }
+
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      position: relative;
+    }
+
+    .button-group button {
+      width: 280px;
+      background: linear-gradient(145deg, #ff6666, #cc0000);
+      color: #fff;
+      border: none;
+      padding: 1rem 2.5rem;
+      border-radius: 12px;
+      font-size: 1.4rem;
+      cursor: pointer;
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.4);
+      transition: background 0.3s ease, transform 0.2s;
+      position: relative;
+    }
+
+    .button-group button:hover {
+      background: #ff1a1a;
+      transform: scale(1.05);
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.6);
+    }
+
+    .button-group button.fade-transition {
+      transition: all 0.4s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="curtains left"></div>
+  <div class="curtains right"></div>
+
+  <div class="intro-screen" id="intro">
+    <h1>VegasTrivia</h1>
+    <p>"כמה ידע יש לך? נראה אותך!"</p>
+  </div>
+
+  <div class="home-screen" id="home">
+    <div class="home-title">VegasTrivia</div>
+    <div class="button-group">
+        <button class="fade-transition"
+          onmouseenter="this.dataset.original=this.innerText; this.innerText='משחק יחיד מול המחשב';"
+          onmouseleave="this.innerText=this.dataset.original"
+          onclick="setTimeout(() => location.href='mono_page.html', 700);">
+          🤖 מונו-טריויה
+        </button>
+        <button class="fade-transition"
+        onmouseenter="this.dataset.original=this.innerText;
+        this.innerText='משחק קבוצתי עם חברים עד 5 משתתפים';"
+        onmouseleave="this.innerText=this.dataset.original" onclick="setTimeout(() => location.href='folo.html', 700);">👥 פולו-טריויה</button>
+        <button class="fade-transition" onmouseenter="this.dataset.original=this.innerText; this.innerText='שחקנים מכל העולם';" onmouseleave="this.innerText=this.dataset.original" onclick="setTimeout(() => location.href='global.html', 700);">🌍 עולמי-טריויה</button>
+    </div>
+  </div>
+
+  <script>
+    setTimeout(() => {
+      document.getElementById('intro').style.display = 'none';
+      document.getElementById('home').classList.add('show');
+    }, 4000);
+  </script>
+</body>
+</html>

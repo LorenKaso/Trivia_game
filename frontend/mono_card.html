@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Mono Trivia Card Flip</title>
+  <style>
+    body {
+      background: url('images/table-background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .card-container {
+      perspective: 1000px;
+      width: 280px;
+      height: 160px;
+    }
+
+    .card {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 1s;
+    }
+
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+
+    .card-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 16px;
+      border: 4px solid #ffffff;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+    }
+
+    .card-back {
+      background: #1a75cf;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .question-mark {
+      font-size: 7rem;
+      font-weight: bold;
+      color: white;
+      text-shadow: 2px 2px 2px #00000066;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      border-radius: 50%;
+    }
+
+    .card-front {
+      background: #ffffff;
+      color: #000;
+      transform: rotateY(180deg);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card-container">
+    <div class="card" id="triviaCard">
+      <div class="card-face card-back">
+        <div class="question-mark">?</div>
+      </div>
+      <div class="card-face card-front" id="questionText">
+        טוען שאלה...
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const card = document.getElementById('triviaCard');
+    const questionText = document.getElementById('questionText');
+
+    async function fetchQuestion() {
+      try {
+        const res = await fetch('http://localhost:5000/api/random-question');
+        const data = await res.json();
+        return data.question || "שאלה לא זמינה";
+      } catch (e) {
+        return "לא הצלחנו לטעון שאלה.";
+      }
+    }
+
+    async function loadNextQuestion() {
+      card.classList.remove('flipped');
+      await new Promise(r => setTimeout(r, 1000));
+      const newQuestion = await fetchQuestion();
+      questionText.textContent = newQuestion;
+      card.classList.add('flipped');
+    }
+
+    loadNextQuestion();
+    setInterval(loadNextQuestion, 20000);
+  </script>
+</body>
+</html>
