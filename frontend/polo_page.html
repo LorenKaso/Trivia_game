@@ -5,10 +5,379 @@
   <title>פולו-טריוויה</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+    }
+
+    body {
+      background: url('polo_table.png') no-repeat center center fixed;
+      background-size: contain; /* ✅ מציג את כל התמונה לפי גובה/רוחב המסך */
+      background-color: #efeaea;
+      background-position: center;
+      background-repeat: no-repeat;
+      color: white;
+      text-align: center;
+      padding: 4rem 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #back-to-home-btn {
+      position: absolute;
+      top: 17px;
+      right: 40px;
+      background-color: #a06e02; /* זהב כהה */
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+      transition: background-color 0.3s, transform 0.2s;
+      z-index: 20;
+    }
+
+    #back-to-home-btn:hover {
+      background-color: #cc0000;
+      transform: scale(1.05);
+    }
+
+    .card {
+      background: rgba(0, 153, 204, 0.6);
+      border: 3px solid white;
+      border-radius: 20px;
+      padding: 1.5rem;
+      width: 260px;
+      height: 150px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+      position: absolute;
+      top: 30%;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+
+    .card h2 {
+      font-size: 1.3rem;
+      color: white;
+      text-shadow: 1px 1px 3px black;
+    }
+
+    .question-mark {
+      font-size: 3rem;
+      color: white;
+      font-weight: bold;
+    }
+
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 500px;
+      width: 100%;
+      margin-top: 200px;
+    }
+
+    .options button {
+      padding: 1rem;
+      font-size: 1.2rem;
+      background-color: #d40000;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .options button:hover {
+      background-color: #ff1a1a;
+      transform: scale(1.05);
+    }
+
+    .feedback {
+      margin-top: 1.5rem;
+      font-size: 1.4rem;
+      color: #ffffcc;
+      text-shadow: 0 0 5px #000;
+    }
+
+    .popup-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100; /* ודא שהוא מעל הכל */
+      visibility: hidden; /* נסתר כברירת מחדל */
+      opacity: 0;
+      transition: visibility 0s, opacity 0.3s ease-in-out;
+    }
+
+    .popup-overlay.show {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .popup-content .popup-buttons button {
+      /* סגנון בסיסי לכפתורים */
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: transform 0.1s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      color: white; /* טקסט לבן על כפתורי מונופול צבעוניים */
+    }
+
+    .popup-overlay.show .popup-content {
+        transform: scale(1);
+    }
+
+    .popup-content h3 {
+      margin-bottom: 25px;
+      font-size: 1.6rem;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .popup-content .popup-buttons button {
+      background-color: #fff; /* כפתורים לבנים */
+      color: #333;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin: 0 10px;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    #confirm-exit-btn {
+      background-color: #e44d26; /* אדום-כתום (כמו אדום של מונופול) */
+    }
+    #confirm-exit-btn:hover {
+      background-color: #ff6a00; /* אדום-כתום בהיר יותר בריחוף */
+      transform: translateY(-2px);
+    }
+
+    #cancel-exit-btn {
+      background-color: #3366cc; /* כחול (כמו כחול של מונופול) */
+    }
+    #cancel-exit-btn:hover {
+      background-color: #004080; /* כחול כהה יותר בריחוף */
+      transform: translateY(-2px);
+    }
+
+    .popup-content .popup-buttons button:hover {
+      background-color: #eee;
+      transform: translateY(-2px);
+    }
+
+    /* Helpers container */
+    .helpers {
+      position: absolute;
+      bottom: 2vh; /* Adjusted lower */
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: row;
+      gap: 0.75cm; /* Slightly reduced gap */
+      justify-content: center;
+      align-items: center;
+      padding: 8px; /* Reduced padding */
+      border-radius: 50px;
+      z-index: 10;
+    }
+
+    .helper-icon {
+      width: 64px; /* Smaller circles */
+      height: 64px; /* Smaller circles */
+      border-radius: 50%;
+      background-color: rgba(144, 238, 144, 0.8); /* Light green background */
+      border: 1.5px solid #130a0a; /* Slightly thinner border */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1rem; /* Smaller font size */
+      color: rgb(18, 8, 8);
+      cursor: pointer;
+      text-align: center;
+      flex-direction: column;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Added text shadow for better readability */
+    }
+
+    /* Leaderboard Styles - Default for larger screens (5 places) */
+    .leaderboard-container {
+      position: absolute;
+      top: 20px; /* Position below the score display */
+      left: 50px; /* Align with the score display */
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 10px 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      max-width: 200px;
+      width: 90%;
+      color: white;
+      text-align: center;
+      z-index: 10;
+      /* Max height to fit 5 rows, including header and padding */
+      max-height: 270px; /* Adjusted to accommodate 5 rows, header, and padding */
+      overflow: hidden; /* Hide extra rows */
+    }
+
+    .leaderboard-container h2 {
+      font-size: 1rem;
+      margin-bottom: 5px;
+      color: #f0f0f0;
+      text-shadow: 1px 1px 2px black;
+    }
+
+    #leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 5px;
+    }
+
+    #leaderboard-table th,
+    #leaderboard-table td {
+      padding: 3px 3px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+      font-size: 0.8rem;
+    }
+
+    #leaderboard-table th {
+      background-color: rgba(51, 102, 204, 0.8);
+      color: white;
+      font-weight: bold;
+    }
+
+    #leaderboard-table tbody tr:nth-child(even) {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #leaderboard-table tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    @media screen and (max-width: 600px) {
+      #back-to-home-btn {
+        top: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+      }
+
+      .card {
+        width: 90vw;
+        height: auto;
+        padding: 1rem;
+        top: 20%;
+      }
+
+      .card h2 {
+        font-size: 1rem;
+      }
+
+      .options {
+        margin-top: 150px;
+        gap: 0.8rem;
+      }
+
+      .options button {
+        font-size: 1rem;
+        padding: 0.8rem;
+      }
+
+      .popup-content {
+        width: 90vw;
+        padding: 20px;
+      }
+
+      .popup-content h3 {
+        font-size: 1.4rem;
+        margin-bottom: 20px;
+      }
+
+      .popup-content .popup-buttons button {
+        padding: 8px 15px;
+        font-size: 1rem;
+        margin: 0 5px;
+      }
+
+      .helpers {
+        bottom: 8vh; /* Adjusted position for smaller screens */
+        gap: 1cm; /* Adjusted gap for smaller screens */
+        padding: 5px;
+      }
+
+      .helper-icon {
+        width: 80px; /* Adjusted size for smaller screens */
+        height: 80px; /* Adjusted size for smaller screens */
+        font-size: 1rem; /* Adjusted font size for smaller screens */
+      }
+
+      /* Leaderboard Styles - for smaller screens (3 places) */
+      .leaderboard-container {
+        top: calc(10px + 4cm); /* 4cm below the score display (10px from top) */
+        left: 10px;
+        padding: 8px 10px;
+        width: calc(100% - 40);
+        max-width: none;
+        max-height: 180px; /* Adjusted to accommodate 3 rows, header, and padding */
+        overflow: hidden; /* Ensure only 3 rows are visible */
+      }
+      .leaderboard-container h2 {
+        font-size: 1.2rem;
+      }
+      #leaderboard-table th,
+      #leaderboard-table td {
+        font-size: 0.8rem;
+        padding: 6px 4px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <button id="back-to-home-btn">חזור לדף הבית</button>
+  <button id="back-to-home-btn">חזרה לדף הבית</button>
+
+
+  <div id="score-display" class="score-display">ניקוד: 0</div>
+
+  <div class="leaderboard-container">
+    <h2>לוח תוצאות</h2>
+    <table id="leaderboard-table">
+      <thead>
+        <tr>
+          <th>מיקום</th>
+          <th>שם שחקן</th>
+          <th>ניקוד</th>
+        </tr>
+      </thead>
+      <tbody>
+        </tbody>
+    </table>
+  </div>
 
   <div class="card">
     <div id="card-content" class="question-mark">?</div>
@@ -17,18 +386,25 @@
   <div class="options" id="options"></div>
   <div class="feedback" id="feedback"></div>
 
-  <div id="popup-overlay" class="popup-overlay">
+  <div class="helpers">
+    <div class="helper-icon" title="הכפלת ניקוד">X הכפלת ניקוד </div>
+    <div class="helper-icon" title="עזרת חבר">👤עזרת חבר</div>
+    <div class="helper-icon" title="50/50">50/50</div>
+  </div>
+
+  <div class="popup-overlay" id="popup-overlay">
     <div class="popup-content">
-      <h3>האם אתה בטוח שברצונך לצאת?</h3>
+      <h3>האם ברצונך לחזור לדף הבית?</h3>
       <div class="popup-buttons">
-        <button id="confirm-exit-btn">צא למסך הבית</button>
-        <button id="cancel-exit-btn">הישאר במשחק</button>
+        <button id="confirm-exit-btn">כן, צא מהמשחק</button>
+        <button id="cancel-exit-btn">לא, הישאר במשחק</button>
       </div>
     </div>
   </div>
 
   <script>
     const socket = io("http://localhost:5000");
+    let timerInterval;
 
     const cardContent = document.getElementById("card-content");
     const optionsDiv = document.getElementById("options");
@@ -45,6 +421,7 @@
     socket.on("trivia_question", (data) => {
       cardContent.classList.remove("question-mark");
       cardContent.innerHTML = `<h2>${data.question}</h2>`;
+
       optionsDiv.innerHTML = "";
 
       data.options.forEach(option => {
@@ -52,7 +429,6 @@
         btn.innerText = option;
         btn.onclick = () => {
           socket.emit("submit_answer", { answer: option });
-          Array.from(optionsDiv.children).forEach(button => button.disabled = true);
         };
         optionsDiv.appendChild(btn);
       });
@@ -61,13 +437,14 @@
     });
 
     socket.on("answer_result", (data) => {
-      feedbackDiv.innerText = `${data.result} ✅ התשובה הנכונה: ${data.correct}`;
+      feedbackDiv.innerText =
+        data.result + " ✅ התשובה הנכונה: " + data.correct;
     });
 
     socket.on("game_over", (data) => {
-      cardContent.innerHTML = `<h2>🏁 המשחק הסתיים!</h2>`;
+      cardContent.innerHTML = `<h2>🏋️ המשחק הסתיים!</h2>`;
       optionsDiv.innerHTML = "";
-      feedbackDiv.innerText = `🥇 ניקוד סופי: ${data.final_score}`;
+      feedbackDiv.innerText = "🥇 ניקוד סופי: " + data.final_score;
     });
 
     backToHomeBtn.addEventListener("click", () => {
