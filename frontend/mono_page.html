@@ -21,7 +21,7 @@
     body {
       background: url('mono_table.png') no-repeat center center fixed;
       background-size: 87%;
-      background-color: #dfafaf;
+      background-color: white;
       background-repeat: no-repeat;
       background-position: center;
       color: white;
@@ -37,7 +37,7 @@
     #back-to-home-btn {
       position: absolute;
       top: 17px;
-      right: 40px; /* מיקום בפינה השמאלית העליונה */
+      right: 55px; /* מיקום בפינה השמאלית העליונה */
       background-color: #a06e02; /* צבע אדום כהה */
       color: white;
       padding: 10px 15px;
@@ -199,6 +199,67 @@
       transform: translateY(-2px);
     }
 
+    /* Helpers container */
+    .helpers {
+      position: absolute;
+      bottom: 2vh; /* Adjusted lower */
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: row;
+      gap: 1.2cm; /* Slightly reduced gap */
+      justify-content: center;
+      align-items: center;
+      padding: 8px; /* Reduced padding */
+      border-radius: 50px;
+      z-index: 10;
+    }
+
+    .helper-icon {
+      width: 68px; /* Smaller circles */
+      height: 68px; /* Smaller circles */
+      border-radius: 50%;
+      background-color: rgba(144, 238, 144, 0.8); /* Light green background */
+      border: 1.5px solid #130a0a; /* Slightly thinner border */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 0.9rem; /* Smaller font size */
+      color: rgb(18, 8, 8);
+      cursor: pointer;
+      text-align: center;
+      flex-direction: column;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.5); /* Added text shadow for better readability */
+    }
+
+    /* סגנונות חדשים לשעון העצר - מראה מונופול עם שקיפות */
+.digital-timer-display {
+      position: absolute;
+      top: 70px; /* המיקום מהקצה העליון הוא קבוע בשני המקרים */
+      right: 75px; /* מיקום למסכים גדולים (ברירת מחדל) */
+      background-color: rgba(0, 0, 0, 0.6); /* לוח שחור שקוף */
+      color: #3366cc; /* כחול מונופול - ניתן לשנות ל- #d40000 עבור אדום */
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-family: 'Orbitron', monospace; /* פונט דיגיטלי */
+      font-size: 2rem;
+      font-weight: bold;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5); /* צל עדין לשקיפות */
+      z-index: 20;
+      min-width: 100px;
+      text-align: center;
+      text-shadow: 0 0 8px rgba(51, 102, 204, 0.7), 0 0 15px rgba(51, 102, 204, 0.5); /* זוהר כחול בהתאם */
+      border: 1px solid rgba(255, 255, 255, 0.3); /* גבול לבן שקוף עדין */
+      backdrop-filter: blur(2px); /* טשטוש קל לרקע שמאחוריו */
+      box-sizing: border-box;
+    }
+    @font-face {
+        font-family: 'Digital-7';
+        src: url('fonts/digital-7.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
     /* Media Queries for responsiveness */
     @media screen and (max-width: 600px) {
       #back-to-home-btn {
@@ -232,11 +293,35 @@
         font-size: 1rem;
         margin: 0 5px;
       }
+
+      .helpers {
+        bottom: 8vh; /* Adjusted position for smaller screens */
+        gap: 1cm; /* Adjusted gap for smaller screens */
+        padding: 5px;
+      }
+
+      .helper-icon {
+        width: 80px; /* Adjusted size for smaller screens */
+        height: 80px; /* Adjusted size for smaller screens */
+        font-size: 1rem; /* Adjusted font size for smaller screens */
+      }
+
+      .digital-timer-display {
+        top: 10px;
+        right: 450px;
+        padding: 5px 10px;
+        font-size: 2rem;
+        min-width: 80px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        text-shadow: 0 0 6px rgba(51, 102, 204, 0.7), 0 0 10px rgba(51, 102, 204, 0.5);
+      }
     }
   </style>
 </head>
 <body>
   <button id="back-to-home-btn">חזור לדף הבית</button>
+
+  <div class="digital-timer-display" id="timer-countdown">00:30</div>
 
   <div class="card">
     <div id="card-content" class="question-mark">?</div>
@@ -244,6 +329,12 @@
 
   <div class="options" id="options"></div>
   <div class="feedback" id="feedback"></div>
+
+  <div class="helpers">
+    <div class="helper-icon" title="הכפלת ניקוד">X הכפלת ניקוד </div>
+    <div class="helper-icon" title="עזרת חבר">👤עזרת חבר</div>
+    <div class="helper-icon" title="50/50">50/50</div>
+  </div>
 
   <div id="popup-overlay" class="popup-overlay">
     <div class="popup-content">
@@ -266,11 +357,15 @@
     const feedbackDiv = document.getElementById("feedback");
     const backToHomeBtn = document.getElementById("back-to-home-btn");
     const popupOverlay = document.getElementById("popup-overlay");
-    const confirmExitBtn = document.getElementById("confirm-exit-btn");
+    const confirmExitBtn = document = document.getElementById("confirm-exit-btn");
     const cancelExitBtn = document.getElementById("cancel-exit-btn");
+    const scoreDisplay = document.getElementById("score-display");
+    const timerCountdown = document.getElementById("timer-countdown"); // כעת מפנה ישירות לטקסט הטיימר
 
     socket.on("connect", () => {
       console.log("🎯 התחברת לשרת הטריוויה");
+      scoreDisplay.innerText = "ניקוד: 0";
+      timerCountdown.innerText = "30"; // אתחל טיימר בעת התחברות
     });
 
     socket.on("trivia_question", (data) => {
@@ -278,26 +373,31 @@
       cardContent.innerHTML = `<h2>${data.question}</h2>`;
 
       optionsDiv.innerHTML = "";
+      optionsDiv.style.pointerEvents = 'auto'; // אפשר לחיצה על אפשרויות שוב
 
       data.options.forEach(option => {
         const btn = document.createElement("button");
         btn.innerText = option;
         btn.onclick = () => {
           socket.emit("submit_answer", { answer: option });
-          // ניתן להשבית את כל הכפתורים לאחר לחיצה כדי למנוע לחיצות כפולות
-          Array.from(optionsDiv.children).forEach(button => button.disabled = true);
+          optionsDiv.style.pointerEvents = 'none'; // השבת אפשרויות לאחר תשובה
+          clearInterval(timerInterval); // עצור את הטיימר כשתשובה נשלחה
         };
         optionsDiv.appendChild(btn);
       });
 
       feedbackDiv.innerText = "";
-    });
 
+      // התחל את הטיימר לשאלה החדשה
+      startTimer(data.time_limit); // השרת צריך לשלוח time_limit
+    });
     socket.on("answer_result", (data) => {
       feedbackDiv.innerText =
         data.result + " ✅ התשובה הנכונה: " + data.correct;
-      // אם היה גם ניקוד, נעדכן אותו כאן, כפי שתיקנו קודם.
-      // לדוגמה: document.getElementById("score-display").innerText = `ניקוד: ${data.total_score}`;
+      if (data.total_score !== undefined) {
+        scoreDisplay.innerText = `ניקוד: ${data.total_score}`;
+      }
+      clearInterval(timerInterval); // ודא שהטיימר נעצר לאחר קבלת התוצאה
     });
 
     socket.on("game_over", (data) => {
@@ -305,7 +405,50 @@
       optionsDiv.innerHTML = "";
       feedbackDiv.innerText = "🥇 ניקוד סופי: " + data.final_score;
     });
+    // פונקציונליות חדשה של הטיימר
+    function startTimer(duration) {
+      let timer = duration;
+      timerCountdown.innerText = timer; // הצג את הזמן ההתחלתי
 
+      clearInterval(timerInterval); // נקה כל טיימר קיים
+
+      timerInterval = setInterval(() => {
+        timer--;
+        timerCountdown.innerText = timer;
+
+        if (timer <= 0) {
+          clearInterval(timerInterval);
+          // שלח תשובה ריקה או הודע לשרת שהזמן נגמר
+          socket.emit("submit_answer", { answer: "Time's up!" });
+          optionsDiv.style.pointerEvents = 'none'; // השבת אפשרויות
+          feedbackDiv.innerText = "⏰ הזמן אזל!";
+        }
+      }, 1000); // עדכן כל שנייה
+    }
+
+    // --- לוגיקת Pop-up ---
+
+    backToHomeBtn.addEventListener("click", () => {
+      popupOverlay.classList.add("show");
+      clearInterval(timerInterval); // השהה את הטיימר כשהפופ-אפ פתוח
+    });
+
+    confirmExitBtn.addEventListener("click", () => {
+      window.location.href = "home_page.html";
+    });
+
+    cancelExitBtn.addEventListener("click", () => {
+      popupOverlay.classList.remove("show");
+      // ניתן להמשיך את הטיימר אם המשתמש ביטל את היציאה, אך זה דורש לוגיקה נוספת.
+      // בשלב זה, לא נמשיך אוטומטית למען פשטות.
+    });
+
+    popupOverlay.addEventListener("click", (event) => {
+      if (event.target === popupOverlay) {
+        popupOverlay.classList.remove("show");
+        // ניתן להמשיך את הטיימר אם הפופ-אפ נסגר בלחיצה בחוץ.
+      }
+    });
     // --- Pop-up Logic ---
 
     // כשאני לוחץ על כפתור "חזור לדף הבית"
