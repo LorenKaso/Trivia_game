@@ -64,7 +64,7 @@
       height: 150px;
       box-shadow: 0 0 15px rgba(0,0,0,0.4);
       position: absolute;
-      top: 30%;
+      top: 25%;
       z-index: 10;
       display: flex;
       align-items: center;
@@ -233,7 +233,7 @@
     }
 
     /* סגנונות חדשים לשעון העצר - מראה מונופול עם שקיפות */
-.digital-timer-display {
+    .digital-timer-display {
       position: absolute;
       top: 70px; /* המיקום מהקצה העליון הוא קבוע בשני המקרים */
       right: 75px; /* מיקום למסכים גדולים (ברירת מחדל) */
@@ -260,6 +260,61 @@
         font-style: normal;
     }
 
+    .answers-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 2 תשובות בכל שורה */
+      gap: 1rem;
+      margin-top: 15rem;
+      max-width: 800px;
+    }
+
+    .answer-card {
+      background-color:rgba(0, 153, 204, 0.6); /* לוח שחור שקוף */
+      color: white;
+      padding: 1rem;
+      border-radius: 16px;
+      border: 2px solid white;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background-color 1s ease, transform 1s ease;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.3);
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .answer-card:hover {
+      transform: scale(1.05);
+      background-color: #ff1a1a;
+    }
+
+    /* תשובה נכונה */
+    .correct-answer {
+      background-color: #4CAF50 !important;
+      color: white;
+      border-color: #3e8e41;
+      transition: background-color 2s ease;
+    }
+
+    @keyframes correctFlash {
+      0%   { background-color: #33b537; }
+      50%  { background-color: #a5d6a7; }  /* ירוק בהיר באמצע */
+      100% { background-color: #33b537; }
+    }
+
+    .correct-answer.flash {
+      animation: correctFlash 2s ease-in-out;
+    }
+
+
+    /* תשובה שגויה */
+    .wrong-answer {
+      background-color: #f44336 !important;
+      color: white;
+      border-color: #ba000d;
+      transition: background-color 2s ease;
+    }
+
+    
     /* Media Queries for responsiveness */
     @media screen and (max-width: 600px) {
       #back-to-home-btn {
@@ -322,12 +377,13 @@
   <button id="back-to-home-btn">חזור לדף הבית</button>
 
   <div class="digital-timer-display" id="timer-countdown">00:30</div>
+  <div id="score-display" style="position:absolute; top:20px; left:100px; font-size:1.2rem; color:white;">ניקוד: 0</div>
 
   <div class="card">
     <div id="card-content" class="question-mark">?</div>
   </div>
 
-  <div class="options" id="options"></div>
+  <div class="answers-grid" id="options"></div>
   <div class="feedback" id="feedback"></div>
 
   <div class="helpers">
@@ -348,7 +404,7 @@
 
   <script>
     const socket = io("http://localhost:5000");
-
+    let selectedAnswer = null; // הבחירה של המשתמש
     let timerInterval; // משתנה גלובלי לשמירת מזהה הטיימר של ה-setInterval
 
     // --- References to HTML elements ---
@@ -362,64 +418,119 @@
     const scoreDisplay = document.getElementById("score-display");
     const timerCountdown = document.getElementById("timer-countdown"); // כעת מפנה ישירות לטקסט הטיימר
 
+    /*עיצוב שעון */
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainingSeconds = seconds % 60;
+      const formattedMinutes = String(minutes).padStart(2, '0');
+      const formattedSeconds = String(remainingSeconds).padStart(2, '0');
+      return `${formattedMinutes}:${formattedSeconds}`;
+    }
+
     socket.on("connect", () => {
       console.log("🎯 התחברת לשרת הטריוויה");
       scoreDisplay.innerText = "ניקוד: 0";
-      timerCountdown.innerText = "30"; // אתחל טיימר בעת התחברות
+      timerCountdown.innerText = formatTime(30); // אתחל טיימר בעת התחברות
     });
 
     socket.on("trivia_question", (data) => {
+      selectedAnswer = null;
       cardContent.classList.remove("question-mark");
       cardContent.innerHTML = `<h2>${data.question}</h2>`;
 
       optionsDiv.innerHTML = "";
       optionsDiv.style.pointerEvents = 'auto'; // אפשר לחיצה על אפשרויות שוב
+      feedbackDiv.innerText = ""; // נקה פידבק קודם
 
       data.options.forEach(option => {
-        const btn = document.createElement("button");
-        btn.innerText = option;
-        btn.onclick = () => {
-          socket.emit("submit_answer", { answer: option });
-          optionsDiv.style.pointerEvents = 'none'; // השבת אפשרויות לאחר תשובה
-          clearInterval(timerInterval); // עצור את הטיימר כשתשובה נשלחה
+        const card = document.createElement("div");
+        card.classList.add("answer-card");
+        card.innerText = option;
+        card.onclick = () => {
+          selectedAnswer = option;  // שמור את התשובה שהמשתמש בחר
+          clearInterval(timerInterval); // עצור את הטיימר מיד עם שליחת תשובה
+    socket.emit("submit_answer", { answer: option, timed_out: false });
+          
+          // מנע לחיצה כפולה
+          const allCards = document.querySelectorAll(".answer-card");
+          allCards.forEach(c => {
+            c.style.pointerEvents = "none";
+          });
         };
-        optionsDiv.appendChild(btn);
+        optionsDiv.appendChild(card);
       });
+
 
       feedbackDiv.innerText = "";
 
       // התחל את הטיימר לשאלה החדשה
       startTimer(data.time_limit); // השרת צריך לשלוח time_limit
     });
+    
     socket.on("answer_result", (data) => {
-      feedbackDiv.innerText =
-        data.result + " ✅ התשובה הנכונה: " + data.correct;
-      if (data.total_score !== undefined) {
-        scoreDisplay.innerText = `ניקוד: ${data.total_score}`;
-      }
-      clearInterval(timerInterval); // ודא שהטיימר נעצר לאחר קבלת התוצאה
+      clearInterval(timerInterval); // ודא שהטיימר נעצר גם כשמתקבלת תשובה מהשרת
+      timerCountdown.innerText = formatTime(0); // הצג 00:00 מיד עם קבלת התוצאה
+
+      const cards = document.querySelectorAll(".answer-card");
+      const correctAnswerText = data.correct;
+      const isCorrect = (selectedAnswer?.trim() === correctAnswerText?.trim());
+      const isTimedOut = (data.result.includes("נגמר הזמן") || (data.result.includes("Timeout") && selectedAnswer === null)); // זיהוי שהזמן נגמר
+
+      console.log("🧠 selectedAnswer:", selectedAnswer);
+      console.log("✅ correctAnswerText:", correctAnswerText);
+      console.log("🟩 האם התשובה נכונה? ", isCorrect);
+      console.log("⏰ האם הזמן נגמר? ", isTimedOut);
+
+      cards.forEach(card => {
+        const text = card.innerText.trim();
+
+        // 1. אם זו התשובה הנכונה:
+        if (text.trim() === correctAnswerText.trim()) {
+          card.classList.add("correct-answer", "flash");
+          console.log("🎉 צובעים תשובה נכונה בירוק:", text);
+          // הפעל אפקט
+          if (isCorrect || isTimedOut) {
+            card.classList.add("flash");
+            console.log("✨ אפקט אנימציה לתשובה הנכונה");
+            setTimeout(() => card.classList.remove("flash"), 1000);
+          }
+        }
+
+        // 2. אם המשתמש בחר בתשובה שגויה:
+        if (selectedAnswer === text && !isCorrect) {
+          card.classList.add("wrong-answer");
+          console.log("❌ צובעים תשובה שגויה באדום:", text);
+        }
+
+        card.style.pointerEvents = "none"; // השבת את כל הכפתורים לאחר התשובה
+      });
+
+      feedbackDiv.innerText = `${data.result} ✅ התשובה הנכונה: ${data.correct}`;
+      scoreDisplay.innerText = `ניקוד: ${data.total_score}`;
     });
 
     socket.on("game_over", (data) => {
       cardContent.innerHTML = `<h2>🏋️ המשחק הסתיים!</h2>`;
       optionsDiv.innerHTML = "";
       feedbackDiv.innerText = "🥇 ניקוד סופי: " + data.final_score;
+      timerCountdown.innerText = formatTime(0); // אפס את הטיימר
     });
+
     // פונקציונליות חדשה של הטיימר
     function startTimer(duration) {
       let timer = duration;
-      timerCountdown.innerText = timer; // הצג את הזמן ההתחלתי
+      timerCountdown.innerText = formatTime(timer); // הצג את הזמן ההתחלתי
 
       clearInterval(timerInterval); // נקה כל טיימר קיים
 
       timerInterval = setInterval(() => {
         timer--;
-        timerCountdown.innerText = timer;
+        timerCountdown.innerText = formatTime(timer);
 
         if (timer <= 0) {
           clearInterval(timerInterval);
           // שלח תשובה ריקה או הודע לשרת שהזמן נגמר
-          socket.emit("submit_answer", { answer: "Time's up!" });
+          socket.emit("submit_answer", { timed_out: true });
           optionsDiv.style.pointerEvents = 'none'; // השבת אפשרויות
           feedbackDiv.innerText = "⏰ הזמן אזל!";
         }
@@ -449,6 +560,7 @@
         // ניתן להמשיך את הטיימר אם הפופ-אפ נסגר בלחיצה בחוץ.
       }
     });
+
     // --- Pop-up Logic ---
 
     // כשאני לוחץ על כפתור "חזור לדף הבית"
